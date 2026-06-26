@@ -1,38 +1,51 @@
 package dev.tkspring;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Consumer;
 import java.io.File;
 
 public class Utils {
 
-    public static List<Class<?>> findClassesByAnnotation(Class<? extends Annotation> annotation, String... basePackages) throws Exception {
-        List<Class<?>> output = new ArrayList<>();
-        for (String basePackage : basePackages) {
-            List<Class<?>> classes = findClasses(basePackage);
-            for (Class<?> clazz : classes) {
-                if (clazz.getAnnotation(annotation) != null && ! output.contains(clazz)) {
-                    output.add(clazz);
+    public static void findMethodsByAnnotation(
+            String[] packages,
+            Class<? extends Annotation> classAnnotation,
+            Class<? extends Annotation> methodAnnotation,
+            Consumer<Method> dest
+    ) throws Exception {
+        Set<Class<?>> classes = new HashSet<>();
+        for (String pkg : packages) {
+            findClasses(pkg, classes);
+        }
+
+        for (Class<?> clazz : classes) {
+            if (classAnnotation == null || clazz.isAnnotationPresent(classAnnotation)) {
+                for (Method method : clazz.getMethods()) {
+                    if (methodAnnotation == null || method.isAnnotationPresent(methodAnnotation)) {
+                        dest.accept(method);
+                    }
                 }
             }
         }
-        return output;
     }
 
-    private static List<Class<?>> findClasses(String packageName) throws Exception {
-        String packagePath = packageName.replace('.', '/');
-        List<Class<?>> classes = new ArrayList<>();
-        File packageDir = new File(Thread.currentThread().getContextClassLoader().getResource(packagePath).toURI());
-        for (File file : packageDir.listFiles()) {
+    private static void findClasses(String pkg, Set<Class<?>> dest) throws Exception {
+        String pkgPath = pkg.replace('.', '/');
+        File pkgDir = new File(Thread.currentThread().getContextClassLoader().getResource(pkgPath).toURI());
+
+        for (File file : pkgDir.listFiles()) {
             if (file.isFile() && file.getName().endsWith(".class")) {
-                String className = packageName + "." + file.getName().replace(".class", "");
-                classes.add(Class.forName(className));
+                String className = pkg + "." + file.getName().replace(".class", "");
+                dest.add(Class.forName(className));
             }
             else if (file.isDirectory()) {
-                classes.addAll(findClasses(packageName + "." + file.getName()));
+                findClasses(pkg + "." + file.getName(), dest);
             }
         }
-        return classes;
     }
 }
