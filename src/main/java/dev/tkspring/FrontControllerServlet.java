@@ -59,7 +59,7 @@ public class FrontControllerServlet extends HttpServlet {
         UrlInfo urlInfo = new UrlInfo(HttpMethod.valueOf(request.getMethod()), request.getServletPath());
 
         if (actions.containsKey(urlInfo)) {
-            UrlMapping mapping = actions.get(request.getServletPath());
+            UrlMapping mapping = actions.get(urlInfo);
             out.println("<h1>Ça marche!</h1>");
             out.println("<p><strong>Méthode:</strong> " + request.getMethod() + "</p>");
             out.println("<p><strong>Route:</strong> " + request.getServletPath() + "</p>");
