@@ -4,17 +4,17 @@ import java.lang.reflect.Method;
 
 public class UrlMapping {
 
-    private String url;
+    private UrlInfo url;
     private Class<?> controller;
     private Method method;
 
-    public UrlMapping(String url, Method method) {
+    public UrlMapping(UrlInfo url, Method method) {
         this.url = url;
         this.controller = method.getDeclaringClass();
         this.method = method;
     }
 
-    public String getUrl() {
+    public UrlInfo getUrl() {
         return url;
     }
 
