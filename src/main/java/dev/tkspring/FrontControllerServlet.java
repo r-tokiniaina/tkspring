@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletResponse;
@@ -24,18 +25,8 @@ public class FrontControllerServlet extends HttpServlet {
 
     @Override
     public void init() throws ServletException {
-        actions = new HashMap<>();
-        String basePackages = this.getInitParameter("base-package");
-
-        try {
-            Utils.findMethodsByAnnotation(basePackages.split(";"), Controller.class, Url.class, (method) -> {
-                UrlInfo url = new UrlInfo((Url) method.getAnnotation(Url.class));
-                actions.put(url, new UrlMapping(url, method));
-            });
-        }
-        catch (Exception e) {
-            throw new ServletException(e);
-        }
+        ServletContext context = this.getServletContext();
+        actions = (Map<UrlInfo, UrlMapping>) context.getAttribute("actions");
     }
 
     public void doGet(HttpServletRequest request, HttpServletResponse response)
