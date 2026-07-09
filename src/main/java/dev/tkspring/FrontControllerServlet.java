@@ -7,12 +7,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import dev.tkspring.UrlMapping;
+import dev.tkspring.ModelAndView;
 import dev.tkspring.UrlInfo;
 import dev.tkspring.Utils;
 import dev.tkspring.annotation.Controller;
@@ -21,10 +23,15 @@ import dev.tkspring.constant.HttpMethod;
 
 public class FrontControllerServlet extends HttpServlet {
 
+    private String viewFormat;
     private Map<UrlInfo, UrlMapping> actions;
 
     @Override
     public void init() throws ServletException {
+        String viewPrefix = this.getInitParameter("view-prefix");
+        String viewSuffix = this.getInitParameter("view-suffix");
+        viewFormat = viewPrefix + "%s" + viewSuffix;
+
         ServletContext context = this.getServletContext();
         actions = (Map<UrlInfo, UrlMapping>) context.getAttribute("actions");
     }
@@ -41,12 +48,6 @@ public class FrontControllerServlet extends HttpServlet {
 
     public void processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        response.setContentType("text/html");
-        PrintWriter out = response.getWriter();
-        out.println("<html>");
-        out.println("<head><title>TKSpring</title></head>");
-        out.println("<body>");
-
         UrlInfo urlInfo = new UrlInfo(HttpMethod.valueOf(request.getMethod()), request.getServletPath());
 
         if (actions.containsKey(urlInfo)) {
@@ -54,18 +55,31 @@ public class FrontControllerServlet extends HttpServlet {
 
             try {
                 Object controller = mapping.getController().getDeclaredConstructor().newInstance();
-                mapping.getMethod().invoke(controller);
+                Object returnValue = mapping.getMethod().invoke(controller);
+
+                if (returnValue instanceof ModelAndView) {
+                    ModelAndView mav = (ModelAndView) returnValue;
+
+                    for (Map.Entry<String, Object> entry : mav.getModel().entrySet()) {
+                        request.setAttribute(entry.getKey(), entry.getValue());
+                    }
+
+                    RequestDispatcher dispatcher = request.getRequestDispatcher(
+                        String.format(viewFormat, mav.getView())
+                    );
+                    dispatcher.forward(request, response);
+                }
             }
             catch (Exception e) {
                 throw new ServletException(e);
             }
-
-            out.println("<h1>Ça marche!</h1>");
-            out.println("<p><strong>Méthode:</strong> " + request.getMethod() + "</p>");
-            out.println("<p><strong>Route:</strong> " + request.getServletPath() + "</p>");
-            out.println("<p><strong>Action:</strong> " + mapping.getController().getName() + "::" + mapping.getMethod().getName() + "</p>");
         }
         else {
+            response.setContentType("text/html");
+            PrintWriter out = response.getWriter();
+            out.println("<html>");
+            out.println("<head><title>TKSpring</title></head>");
+            out.println("<body>");
             out.println("<h1>Route inconnue!</h1>");
             out.println("<p>");
             out.println("<strong>Actions connues:</strong>");
@@ -76,9 +90,8 @@ public class FrontControllerServlet extends HttpServlet {
             }
             out.println("</ul>");
             out.println("</p>");
+            out.println("</body>");
+            out.println("</html>");
         }
-
-        out.println("</body>");
-        out.println("</html>");
     }
 }
