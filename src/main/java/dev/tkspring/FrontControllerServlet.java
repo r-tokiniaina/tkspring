@@ -55,7 +55,17 @@ public class FrontControllerServlet extends HttpServlet {
 
             try {
                 Object controller = mapping.getController().getDeclaredConstructor().newInstance();
-                Object returnValue = mapping.getMethod().invoke(controller);
+
+                Object[] args = new Object[mapping.getMethod().getParameterCount()];
+                Class<?>[] argsTypes = mapping.getMethod().getParameterTypes();
+                for (int i = 0; i < args.length; i++) {
+                    Class<?> type = argsTypes[i];
+                    if (type.equals(ServletContext.class)) {
+                        args[i] = getServletContext();
+                    }
+                }
+
+                Object returnValue = mapping.getMethod().invoke(controller, args);
 
                 if (returnValue instanceof ModelAndView) {
                     ModelAndView mav = (ModelAndView) returnValue;
