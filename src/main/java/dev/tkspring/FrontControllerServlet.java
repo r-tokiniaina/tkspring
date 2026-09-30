@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.google.gson.Gson;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
@@ -17,6 +18,7 @@ import dev.tkspring.UrlMapping;
 import dev.tkspring.ModelAndView;
 import dev.tkspring.UrlInfo;
 import dev.tkspring.Utils;
+import dev.tkspring.annotation.AsJson;
 import dev.tkspring.annotation.Controller;
 import dev.tkspring.annotation.Url;
 import dev.tkspring.constant.HttpMethod;
@@ -67,17 +69,32 @@ public class FrontControllerServlet extends HttpServlet {
 
                 Object returnValue = mapping.getMethod().invoke(controller, args);
 
-                if (returnValue instanceof ModelAndView) {
-                    ModelAndView mav = (ModelAndView) returnValue;
+                if (mapping.getMethod().isAnnotationPresent(AsJson.class)) {
+                    AsJson asJson = (AsJson) mapping.getMethod().getAnnotation(AsJson.class);
 
-                    for (Map.Entry<String, Object> entry : mav.getModel().entrySet()) {
-                        request.setAttribute(entry.getKey(), entry.getValue());
+                    response.setContentType("application/json");
+                    PrintWriter out = response.getWriter();
+                    if (asJson.raw()) {
+                        out.print(returnValue);
                     }
+                    else {
+                        Gson gson = new Gson();
+                        out.print(gson.toJson(returnValue));
+                    }
+                }
+                else {
+                    if (returnValue instanceof ModelAndView) {
+                        ModelAndView mav = (ModelAndView) returnValue;
 
-                    RequestDispatcher dispatcher = request.getRequestDispatcher(
-                        String.format(viewFormat, mav.getView())
-                    );
-                    dispatcher.forward(request, response);
+                        for (Map.Entry<String, Object> entry : mav.getModel().entrySet()) {
+                            request.setAttribute(entry.getKey(), entry.getValue());
+                        }
+
+                        RequestDispatcher dispatcher = request.getRequestDispatcher(
+                            String.format(viewFormat, mav.getView())
+                        );
+                        dispatcher.forward(request, response);
+                    }
                 }
             }
             catch (Exception e) {
