@@ -2,26 +2,26 @@ package dev.tkspring;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.Array;
 import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.List;
+import java.lang.reflect.Parameter;
 import java.util.Map;
 
 import com.google.gson.Gson;
-import jakarta.servlet.RequestDispatcher;
-import jakarta.servlet.ServletContext;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpServletRequest;
-import dev.tkspring.UrlMapping;
 import dev.tkspring.ModelAndView;
 import dev.tkspring.UrlInfo;
+import dev.tkspring.UrlMapping;
 import dev.tkspring.Utils;
 import dev.tkspring.annotation.AsJson;
 import dev.tkspring.annotation.Controller;
 import dev.tkspring.annotation.Url;
 import dev.tkspring.constant.HttpMethod;
+import jakarta.servlet.RequestDispatcher;
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 public class FrontControllerServlet extends HttpServlet {
 
@@ -58,16 +58,39 @@ public class FrontControllerServlet extends HttpServlet {
             try {
                 Object controller = mapping.getController().getDeclaredConstructor().newInstance();
 
-                Object[] args = new Object[mapping.getMethod().getParameterCount()];
-                Class<?>[] argsTypes = mapping.getMethod().getParameterTypes();
-                for (int i = 0; i < args.length; i++) {
-                    Class<?> type = argsTypes[i];
-                    if (type.equals(ServletContext.class)) {
-                        args[i] = getServletContext();
+                Map<String, String[]> requestParameters = request.getParameterMap();
+                Parameter[] methodParameters = mapping.getMethod().getParameters();
+
+                Object[] mArgs = new Object[methodParameters.length];
+                for (int i = 0; i < methodParameters.length; i++) {
+                    String mpName = methodParameters[i].getName();
+                    Class<?> mpType = methodParameters[i].getType();
+                    if (mpType.equals(ServletContext.class)) {
+                        mArgs[i] = getServletContext();
+                    }
+                    else if (mpType.equals(HttpServletRequest.class)) {
+                        mArgs[i] = request;
+                    }
+                    else if (mpType.equals(HttpServletResponse.class)) {
+                        mArgs[i] = response;
+                    }
+                    else {
+                        String[] rpValues = requestParameters.get(mpName);
+                        if (mpType.isArray()) {
+                            int rpLength = rpValues == null ? 0 : rpValues.length;
+                            Object objs = Array.newInstance(mpType.getComponentType(), rpLength);
+                            for (int j = 0; j < rpLength; j++) {
+                                Array.set(objs, j, Utils.parse(rpValues[j], mpType.getComponentType()));
+                            }
+                            mArgs[i] = objs;
+                        }
+                        else {
+                            mArgs[i] = Utils.parse(rpValues == null ? null : rpValues[0], mpType);
+                        }
                     }
                 }
 
-                Object returnValue = mapping.getMethod().invoke(controller, args);
+                Object returnValue = mapping.getMethod().invoke(controller, mArgs);
 
                 if (mapping.getMethod().isAnnotationPresent(AsJson.class)) {
                     AsJson asJson = (AsJson) mapping.getMethod().getAnnotation(AsJson.class);
