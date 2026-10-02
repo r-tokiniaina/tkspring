@@ -2,7 +2,7 @@
 
 ## Côté Framework
 - Création de l’annotation `@AsJson` avec la méthode `raw`
-- Dans `FrontControllerServlet.init()`, traiter l’annotation `@AsJson`
+- Dans `FrontControllerServlet.processRequest()`, traiter l’annotation `@AsJson`
 
 ## Côté Test
 Aucune mise à jour
