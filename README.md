@@ -127,6 +127,9 @@ public void methode(
     BigInteger arg17, BigDecimal arg18,
     String arg19,
     Date arg20, LocalDate arg21, LocalDateTime arg22,
-    String[] arg23 // ... et tous les précédents mais en tant que tableau
+    String[] arg23, // ... et tous les précédents mais en tant que tableau
+
+    // Même principe que précédent, mais les paramètres de requête ont la forme: nomParam-nomAttr
+    MyObject arg24
 }
 ```
