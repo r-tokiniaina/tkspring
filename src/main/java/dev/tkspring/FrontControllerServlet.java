@@ -2,8 +2,6 @@ package dev.tkspring;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.lang.reflect.Array;
-import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.Map;
 
@@ -13,8 +11,6 @@ import dev.tkspring.UrlInfo;
 import dev.tkspring.UrlMapping;
 import dev.tkspring.Utils;
 import dev.tkspring.annotation.AsJson;
-import dev.tkspring.annotation.Controller;
-import dev.tkspring.annotation.Url;
 import dev.tkspring.constant.HttpMethod;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletContext;
@@ -58,7 +54,7 @@ public class FrontControllerServlet extends HttpServlet {
             try {
                 Object controller = mapping.getController().getDeclaredConstructor().newInstance();
 
-                Map<String, String[]> requestParameters = request.getParameterMap();
+                Map<String, Object> requestParameterTree = Utils.getRequestParameterTree(request);
                 Parameter[] methodParameters = mapping.getMethod().getParameters();
 
                 Object[] mArgs = new Object[methodParameters.length];
@@ -75,18 +71,8 @@ public class FrontControllerServlet extends HttpServlet {
                         mArgs[i] = response;
                     }
                     else {
-                        String[] rpValues = requestParameters.get(mpName);
-                        if (mpType.isArray()) {
-                            int rpLength = rpValues == null ? 0 : rpValues.length;
-                            Object objs = Array.newInstance(mpType.getComponentType(), rpLength);
-                            for (int j = 0; j < rpLength; j++) {
-                                Array.set(objs, j, Utils.parse(rpValues[j], mpType.getComponentType()));
-                            }
-                            mArgs[i] = objs;
-                        }
-                        else {
-                            mArgs[i] = Utils.parse(rpValues == null ? null : rpValues[0], mpType);
-                        }
+                        Object rpValuesObj = requestParameterTree.get(mpName);
+                        mArgs[i] = Utils.parse(rpValuesObj, mpType);
                     }
                 }
 

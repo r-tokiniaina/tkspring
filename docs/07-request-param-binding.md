@@ -4,4 +4,4 @@
 - Dans `FrontControllerServlet.processRequest()`, récupérer les paramètres de la requête et les injecter dans les paramètres de la méthode
 
 ## Côté Test
-Aucune mise à jour
+- Compiler les fichiers `.java` avec l’option `-parameters`
