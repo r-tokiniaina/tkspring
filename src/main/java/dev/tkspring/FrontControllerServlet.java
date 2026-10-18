@@ -15,10 +15,12 @@ import dev.tkspring.constant.HttpMethod;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+@MultipartConfig
 public class FrontControllerServlet extends HttpServlet {
 
     private String viewFormat;
@@ -63,12 +65,6 @@ public class FrontControllerServlet extends HttpServlet {
                     Class<?> mpType = methodParameters[i].getType();
                     if (mpType.equals(ServletContext.class)) {
                         mArgs[i] = getServletContext();
-                    }
-                    else if (mpType.equals(HttpServletRequest.class)) {
-                        mArgs[i] = request;
-                    }
-                    else if (mpType.equals(HttpServletResponse.class)) {
-                        mArgs[i] = response;
                     }
                     else {
                         Object rpValuesObj = requestParameterTree.get(mpName);
