@@ -38,7 +38,7 @@ Un mini-framework, écrit en Java, qui s’inspirent fortement de Spring MVC.
 </servlet-mapping>
 <!-- ... -->
 ```
-- Penser à compiler avec: l’option `-parameters`
+- Penser à compiler avec l’option : `-parameters`
 - Générer un fichier `ton-projet.war`
 - Placer le fichier `ton-projet.war` dans `/path/to/tomcat/webapps`
 
@@ -130,6 +130,8 @@ public void methode(
     String[] arg23, // ... et tous les précédents mais en tant que tableau
 
     // Même principe que précédent, mais les paramètres de requête ont la forme: nomParam-nomAttr
-    MyObject arg24
+    MyObject arg24,
+
+    dev.tkspring.UploadedFile arg25, dev.tkspring.UploadedFile[] arg26
 }
 ```

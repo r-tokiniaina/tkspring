@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -19,6 +20,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.Part;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -91,7 +93,10 @@ public class Utils {
                 }
             }
             if (isSimpleType(type)) {
-                return parseString(object.toString(), type);
+                return parseString(String.valueOf(object), type);
+            }
+            else if (type == UploadedFile.class) {
+                return parseUploadedFile(object);
             }
             else {
                 return parseObject((Map<String, ?>) object, type);
@@ -121,13 +126,13 @@ public class Utils {
 
     public static Object parseString(String str, Class<?> type) {
         try {
-            if (type.equals(boolean.class) || type.equals(Boolean.class)) {
+            if (type == boolean.class || type == Boolean.class) {
                 if (str == null || str.equalsIgnoreCase("false") || str.equals("0")) {
                     return false;
                 }
                 return true;
             }
-            else if (type.equals(char.class) || type.equals(Character.class)) {
+            else if (type == char.class || type == Character.class) {
                 if (str == null || str.length() == 0) {
                     return type.equals(char.class) ? '\0' : null;
                 }
@@ -157,7 +162,7 @@ public class Utils {
                 if (type == BigInteger.class) return new BigInteger(str);
                 if (type == BigDecimal.class) return new BigDecimal(str);
             }
-            else if (type.equals(String.class)) {
+            else if (type == String.class) {
                 return str;
             }
             else if (type == Date.class) {
@@ -175,6 +180,16 @@ public class Utils {
         catch (Exception e) {
             return type.isPrimitive() ? 0 : null;
         }
+    }
+
+    public static Object parseUploadedFile(Object object) {
+        if (object == null) {
+            return null;
+        }
+        if (object instanceof Part) {
+            return new UploadedFile((Part) object);
+        }
+        return null;
     }
 
     public static Object parseObject(Map<String, ?> map, Class<?> type) {
@@ -208,7 +223,6 @@ public class Utils {
         }
     }
 
-    // Returns Map<String, Object> where Object = String | String[] | Map<String, Object>
     // It transforms: {             to: {
     //                  A: 1,             A: 1,
     //                  B-C: 2,           B: {
@@ -217,11 +231,35 @@ public class Utils {
     //                                    }
     //                                  }
     public static Map<String, Object> getRequestParameterTree(HttpServletRequest request) {
+        // Object[] = String[] | Part[]
+        Map<String, Object[]> requestParams = new HashMap<String, Object[]>(request.getParameterMap());
+        if (request.getContentType() != null
+                && request.getContentType().toLowerCase().contains("multipart/form-data")) {
+            try {
+                for (Part part : request.getParts()) {
+                    if (part.getSize() == 0) {
+                        continue;
+                    }
+                    requestParams.putIfAbsent(part.getName(), new Part[0]);
+                    Object[] parts = requestParams.get(part.getName());
+                    if (parts instanceof Part[]) {
+                        parts = Arrays.copyOf(parts, parts.length + 1);
+                        parts[parts.length - 1] = part;
+                        requestParams.put(part.getName(), parts);
+                    }
+                }
+            }
+            catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        // Object = Map<String, Object> | String[] | Part[]
         Map<String, Object> tree = new HashMap<>();
 
-        for (Map.Entry<String, String[]> entry : request.getParameterMap().entrySet()) {
+        for (Map.Entry<String, Object[]> entry : requestParams.entrySet()) {
             String[] parts = entry.getKey().split("-");
-            String[] values = entry.getValue();
+            Object[] values = entry.getValue();
 
             if (values == null || values.length == 0) {
                 continue;
@@ -232,10 +270,7 @@ public class Utils {
                 subtree.putIfAbsent(parts[i], new HashMap<String, Object>());
                 subtree = (Map<String, Object>) subtree.get(parts[i]);
             }
-            subtree.put(
-                parts[parts.length - 1],
-                values.length == 1 ? values[0] : values
-            );
+            subtree.put(parts[parts.length - 1], values);
         }
 
         return tree;
