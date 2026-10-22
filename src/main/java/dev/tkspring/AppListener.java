@@ -35,5 +35,6 @@ public class AppListener implements ServletContextListener {
         }
 
         context.setAttribute("actions", actions);
+        context.setAttribute("sessions", new HashMap<String, Session>());
     }
 }
