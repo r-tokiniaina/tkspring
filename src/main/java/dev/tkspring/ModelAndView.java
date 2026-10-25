@@ -36,4 +36,8 @@ public class ModelAndView {
     public void set(String attr, Object value) {
         model.put(attr, value);
     }
+
+    public void remove(String attr) {
+        model.remove(attr);
+    }
 }

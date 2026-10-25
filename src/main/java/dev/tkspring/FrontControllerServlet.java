@@ -3,6 +3,7 @@ package dev.tkspring;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Parameter;
+import java.util.Enumeration;
 import java.util.Map;
 
 import com.google.gson.Gson;
@@ -19,6 +20,7 @@ import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 @MultipartConfig
 public class FrontControllerServlet extends HttpServlet {
@@ -46,7 +48,7 @@ public class FrontControllerServlet extends HttpServlet {
         processRequest(request, response);
     }
 
-    public void processRequest(HttpServletRequest request, HttpServletResponse response)
+    private void processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         UrlInfo urlInfo = new UrlInfo(HttpMethod.valueOf(request.getMethod()), request.getServletPath());
 
@@ -56,6 +58,8 @@ public class FrontControllerServlet extends HttpServlet {
             try {
                 Object controller = mapping.getController().getDeclaredConstructor().newInstance();
 
+                Session session = null;
+
                 Map<String, Object> requestParameterTree = Utils.getRequestParameterTree(request);
                 Parameter[] methodParameters = mapping.getMethod().getParameters();
 
@@ -63,8 +67,22 @@ public class FrontControllerServlet extends HttpServlet {
                 for (int i = 0; i < methodParameters.length; i++) {
                     String mpName = methodParameters[i].getName();
                     Class<?> mpType = methodParameters[i].getType();
-                    if (mpType.equals(ServletContext.class)) {
-                        mArgs[i] = getServletContext();
+                    if (mpType.equals(Session.class)) {
+                        if (session == null) {
+                            Map<String, Session> sessions = (Map<String, Session>) this.getServletContext().getAttribute("sessions");
+                            HttpSession httpSession = request.getSession();
+                            if (! sessions.containsKey(httpSession.getId())) {
+                                sessions.put(httpSession.getId(), new Session());
+                            }
+                            session = sessions.get(httpSession.getId());
+                            session.getData().clear(); // We reinit the session data
+                            Enumeration<String> attrs = httpSession.getAttributeNames();
+                            while (attrs.hasMoreElements()) {
+                                String attr = attrs.nextElement();
+                                session.set(attr, httpSession.getAttribute(attr));
+                            }
+                        }
+                        mArgs[i] = session;
                     }
                     else {
                         Object rpValuesObj = requestParameterTree.get(mpName);
@@ -99,6 +117,17 @@ public class FrontControllerServlet extends HttpServlet {
                             String.format(viewFormat, mav.getView())
                         );
                         dispatcher.forward(request, response);
+                    }
+                    else {
+                        PrintWriter out = response.getWriter();
+                        out.print(returnValue);
+                    }
+                }
+
+                if (session != null) {
+                    HttpSession httpSession = request.getSession();
+                    for (Map.Entry<String, Object> entry : session.getData().entrySet()) {
+                        httpSession.setAttribute(entry.getKey(), entry.getValue());
                     }
                 }
             }
