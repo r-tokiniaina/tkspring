@@ -75,10 +75,7 @@ public class FrontControllerServlet extends HttpServlet {
                         session = Utils.getSessionOrPut(request);
                         Object authValue = session.get(authAttr);
                         if (authValue == null) {
-                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                            response.setContentType("text/plain");
-                            PrintWriter out = response.getWriter();
-                            out.println("Accès non autorisé");
+                            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Accès non autorisé");
                             return;
                         }
                         if (mapping.getMethod().isAnnotationPresent(RequireRoles.class)) {
@@ -89,10 +86,7 @@ public class FrontControllerServlet extends HttpServlet {
                                 Object roleValue = session.get(roleAttr);
                                 RequireRoles requireRoles = mapping.getMethod().getAnnotation(RequireRoles.class);
                                 if (! Arrays.asList(requireRoles.value()).contains(roleValue)) {
-                                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                                    response.setContentType("text/plain");
-                                    PrintWriter out = response.getWriter();
-                                    out.println("Accès non autorisé");
+                                    response.sendError(HttpServletResponse.SC_FORBIDDEN, "Accès non autorisé");
                                     return;
                                 }
                             }
