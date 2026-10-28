@@ -5,6 +5,10 @@ Un mini-framework, écrit en Java, qui s’inspirent fortement de Spring MVC.
 - Java
 - Tomcat
 
+## Dépendances
+- Jakarta Servlet API
+- GSON
+
 ## Setup
 - Créer un projet Tomcat
 - Mettre `tkspring.jar` dans `./WEB-INF/lib/`
@@ -29,6 +33,11 @@ Un mini-framework, écrit en Java, qui s’inspirent fortement de Spring MVC.
     <init-param>
         <param-name>view-suffix</param-name>
         <param-value>.jsp</param-value>
+    </init-param>
+
+    <init-param>
+        <param-name>auth-attr</param-name>
+        <param-value>sessionAttrOfAuth</param-value>
     </init-param>
 </servlet>
 
