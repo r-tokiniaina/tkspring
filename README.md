@@ -39,6 +39,11 @@ Un mini-framework, écrit en Java, qui s’inspirent fortement de Spring MVC.
         <param-name>auth-attr</param-name>
         <param-value>sessionAttrOfAuth</param-value>
     </init-param>
+
+    <init-param>
+        <param-name>role-attr</param-name>
+        <param-value>sessionAttrOfRole</param-value>
+    </init-param>
 </servlet>
 
 <servlet-mapping>
