@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -20,6 +21,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.Part;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -274,5 +276,21 @@ public class Utils {
         }
 
         return tree;
+    }
+
+    public static Session getSessionOrPut(HttpServletRequest request) {
+        Map<String, Session> sessions = (Map<String, Session>) request.getServletContext().getAttribute("sessions");
+        HttpSession httpSession = request.getSession();
+        if (! sessions.containsKey(httpSession.getId())) {
+            sessions.put(httpSession.getId(), new Session());
+        }
+        Session session = sessions.get(httpSession.getId());
+        session.getData().clear(); // We reinit the session data
+        Enumeration<String> attrs = httpSession.getAttributeNames();
+        while (attrs.hasMoreElements()) {
+            String attr = attrs.nextElement();
+            session.set(attr, httpSession.getAttribute(attr));
+        }
+        return session;
     }
 }

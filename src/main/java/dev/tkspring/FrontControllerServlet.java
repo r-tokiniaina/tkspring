@@ -3,7 +3,6 @@ package dev.tkspring;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Parameter;
-import java.util.Enumeration;
 import java.util.Map;
 
 import com.google.gson.Gson;
@@ -12,6 +11,7 @@ import dev.tkspring.UrlInfo;
 import dev.tkspring.UrlMapping;
 import dev.tkspring.Utils;
 import dev.tkspring.annotation.AsJson;
+import dev.tkspring.annotation.RequireAuth;
 import dev.tkspring.constant.HttpMethod;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletContext;
@@ -26,6 +26,7 @@ import jakarta.servlet.http.HttpSession;
 public class FrontControllerServlet extends HttpServlet {
 
     private String viewFormat;
+    private String authAttr;
     private Map<UrlInfo, UrlMapping> actions;
 
     @Override
@@ -33,6 +34,8 @@ public class FrontControllerServlet extends HttpServlet {
         String viewPrefix = this.getInitParameter("view-prefix");
         String viewSuffix = this.getInitParameter("view-suffix");
         viewFormat = viewPrefix + "%s" + viewSuffix;
+
+        authAttr = this.getInitParameter("auth-attr");
 
         ServletContext context = this.getServletContext();
         actions = (Map<UrlInfo, UrlMapping>) context.getAttribute("actions");
@@ -60,6 +63,23 @@ public class FrontControllerServlet extends HttpServlet {
 
                 Session session = null;
 
+                if (mapping.getMethod().isAnnotationPresent(RequireAuth.class)) {
+                    if (authAttr == null) {
+                        System.out.println("WARNING: Il faut définir 'auth-attr' dans web.xml afin d’utiliser @RequireAuth");
+                    }
+                    else {
+                        session = Utils.getSessionOrPut(request);
+                        Object authValue = session.get(authAttr);
+                        if (authValue == null) {
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType("text/plain");
+                            PrintWriter out = response.getWriter();
+                            out.println("Accès non autorisé");
+                            return;
+                        }
+                    }
+                }
+
                 Map<String, Object> requestParameterTree = Utils.getRequestParameterTree(request);
                 Parameter[] methodParameters = mapping.getMethod().getParameters();
 
@@ -69,18 +89,7 @@ public class FrontControllerServlet extends HttpServlet {
                     Class<?> mpType = methodParameters[i].getType();
                     if (mpType.equals(Session.class)) {
                         if (session == null) {
-                            Map<String, Session> sessions = (Map<String, Session>) this.getServletContext().getAttribute("sessions");
-                            HttpSession httpSession = request.getSession();
-                            if (! sessions.containsKey(httpSession.getId())) {
-                                sessions.put(httpSession.getId(), new Session());
-                            }
-                            session = sessions.get(httpSession.getId());
-                            session.getData().clear(); // We reinit the session data
-                            Enumeration<String> attrs = httpSession.getAttributeNames();
-                            while (attrs.hasMoreElements()) {
-                                String attr = attrs.nextElement();
-                                session.set(attr, httpSession.getAttribute(attr));
-                            }
+                            session = Utils.getSessionOrPut(request);
                         }
                         mArgs[i] = session;
                     }
@@ -93,7 +102,7 @@ public class FrontControllerServlet extends HttpServlet {
                 Object returnValue = mapping.getMethod().invoke(controller, mArgs);
 
                 if (mapping.getMethod().isAnnotationPresent(AsJson.class)) {
-                    AsJson asJson = (AsJson) mapping.getMethod().getAnnotation(AsJson.class);
+                    AsJson asJson = mapping.getMethod().getAnnotation(AsJson.class);
 
                     response.setContentType("application/json");
                     PrintWriter out = response.getWriter();
