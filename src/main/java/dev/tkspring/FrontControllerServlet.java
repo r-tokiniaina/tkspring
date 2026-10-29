@@ -3,6 +3,7 @@ package dev.tkspring;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Parameter;
+import java.util.Arrays;
 import java.util.Map;
 
 import com.google.gson.Gson;
@@ -12,6 +13,7 @@ import dev.tkspring.UrlMapping;
 import dev.tkspring.Utils;
 import dev.tkspring.annotation.AsJson;
 import dev.tkspring.annotation.RequireAuth;
+import dev.tkspring.annotation.RequireRoles;
 import dev.tkspring.constant.HttpMethod;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletContext;
@@ -27,6 +29,7 @@ public class FrontControllerServlet extends HttpServlet {
 
     private String viewFormat;
     private String authAttr;
+    private String roleAttr;
     private Map<UrlInfo, UrlMapping> actions;
 
     @Override
@@ -36,6 +39,7 @@ public class FrontControllerServlet extends HttpServlet {
         viewFormat = viewPrefix + "%s" + viewSuffix;
 
         authAttr = this.getInitParameter("auth-attr");
+        roleAttr = this.getInitParameter("role-attr");
 
         ServletContext context = this.getServletContext();
         actions = (Map<UrlInfo, UrlMapping>) context.getAttribute("actions");
@@ -63,19 +67,29 @@ public class FrontControllerServlet extends HttpServlet {
 
                 Session session = null;
 
-                if (mapping.getMethod().isAnnotationPresent(RequireAuth.class)) {
+                if (mapping.getMethod().isAnnotationPresent(RequireAuth.class) || mapping.getMethod().isAnnotationPresent(RequireRoles.class)) {
                     if (authAttr == null) {
-                        System.out.println("WARNING: Il faut définir 'auth-attr' dans web.xml afin d’utiliser @RequireAuth");
+                        System.out.println("WARNING: Il faut définir 'auth-attr' dans web.xml afin d’utiliser @RequireAuth et @RequireRole");
                     }
                     else {
                         session = Utils.getSessionOrPut(request);
                         Object authValue = session.get(authAttr);
                         if (authValue == null) {
-                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                            response.setContentType("text/plain");
-                            PrintWriter out = response.getWriter();
-                            out.println("Accès non autorisé");
+                            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Accès non autorisé");
                             return;
+                        }
+                        if (mapping.getMethod().isAnnotationPresent(RequireRoles.class)) {
+                            if (roleAttr == null) {
+                                System.out.println("WARNING: Il faut définir 'role-attr' dans web.xml afin d’utiliser @RequireRole");
+                            }
+                            else {
+                                Object roleValue = session.get(roleAttr);
+                                RequireRoles requireRoles = mapping.getMethod().getAnnotation(RequireRoles.class);
+                                if (! Arrays.asList(requireRoles.value()).contains(roleValue)) {
+                                    response.sendError(HttpServletResponse.SC_FORBIDDEN, "Accès non autorisé");
+                                    return;
+                                }
+                            }
                         }
                     }
                 }
