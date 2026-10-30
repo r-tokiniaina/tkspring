@@ -293,4 +293,17 @@ public class Utils {
         }
         return session;
     }
+
+    public static Object getControllerInstanceOrPut(HttpServletRequest request, Class<?> controller) {
+        Map<Class<?>, Object> controllers = (Map<Class<?>, Object>) request.getServletContext().getAttribute("controllers");
+        if (! controllers.containsKey(controller)) {
+            try {
+                controllers.put(controller, controller.getDeclaredConstructor().newInstance());
+            }
+            catch (Exception e) {
+                return null;
+            }
+        }
+        return controllers.get(controller);
+    }
 }

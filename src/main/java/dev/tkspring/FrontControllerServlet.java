@@ -63,8 +63,6 @@ public class FrontControllerServlet extends HttpServlet {
             UrlMapping mapping = actions.get(urlInfo);
 
             try {
-                Object controller = mapping.getController().getDeclaredConstructor().newInstance();
-
                 Session session = null;
 
                 if (mapping.getMethod().isAnnotationPresent(RequireAuth.class) || mapping.getMethod().isAnnotationPresent(RequireRoles.class)) {
@@ -113,6 +111,7 @@ public class FrontControllerServlet extends HttpServlet {
                     }
                 }
 
+                Object controller = Utils.getControllerInstanceOrPut(request, mapping.getController());
                 Object returnValue = mapping.getMethod().invoke(controller, mArgs);
 
                 if (mapping.getMethod().isAnnotationPresent(AsJson.class)) {
